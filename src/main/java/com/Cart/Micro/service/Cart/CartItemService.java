@@ -20,7 +20,6 @@ public class CartItemService implements ICartItemService {
     private final CartItemRepository cartItemRepository;
     private final CartRepository cartRepository;
 //    private final ProductService productService;
-    private final CartService cartService;
     private final ProductInterface productInterface;
     private final RedisService redisService;
 
@@ -28,7 +27,8 @@ public class CartItemService implements ICartItemService {
     @Override
     public void addItemToCart(Long cartId, Long productId, int quantity) {
 
-        Cart cart = cartService.getCart(cartId);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(()-> new ResourceNotFoundException("Product Not Found"));
 
         System.out.println(cart);
 
@@ -37,7 +37,6 @@ public class CartItemService implements ICartItemService {
                 .findFirst() // Find the first cart item with the matching product ID
                 .orElse(new CartItem()); // If not found, create a new cart item
 
-        System.out.println(cartItem);
 
         if(cartItem.getId() == null) {
             ProductDTOforCart product = productInterface.getProductDetails(productId);
@@ -47,56 +46,62 @@ public class CartItemService implements ICartItemService {
             cartItem.setProductTitle(product.getName());
             cartItem.setItemId(product.getId());
             cartItem.setProductUrl(product.getUrl());
+            cartItemRepository.save(cartItem);
 
         } else {
             cartItem.setQuantity(cartItem.getQuantity() + quantity);
 
         }
-        cartItem.setCart(cart);
         cartItem.setTotalPrice();
         cart.addCartItem(cartItem);
         cart.updateTotalAmount();
-        System.out.println(cart);
-        redisService.storeCartInRedis(cartRepository.save(cart));
+        cartItemRepository.save(cartItem);
+        Cart savedCart = cartRepository.save(cart);
+        redisService.storeCartInRedis(savedCart);
     }
 
     @Override
     public void removeItemFromCart(Long cartId, Long productId) {
 
-        Cart cart = cartService.getCart(cartId);
+        System.out.println("cart : "+cartId + "product :"+productId);
+
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(()-> new ResourceNotFoundException("Product Not Found"));
+
         CartItem cartItem = getCartItem(cartId, productId);
 
         cart.removeCartItem(cartItem);
         cart.updateTotalAmount();
 
         cartItemRepository.delete(cartItem);
-        redisService.storeCartInRedis(cartRepository.save(cart));
+        cartRepository.save(cart);
+
+        Cart savedCart = cartRepository.save(cart);
+        redisService.storeCartInRedis(savedCart);
 
     }
 
     @Override
     public void updateItemQuantity(Long cartId, Long productId, int quantity) {
 
-        Cart cart = cartService.getCart(cartId);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(()-> new ResourceNotFoundException("Product Not Found"));
         CartItem cartItem = getCartItem(cartId, productId);
 
         cartItem.setQuantity(quantity);
-        cart.addCartItem(cartItem);
         cartItem.setTotalPrice();
         cart.updateTotalAmount();
-        cartItem.setCart(cart);
-
-        System.out.println(cartItem);
-
 
         cartItemRepository.save(cartItem);
+        Cart savedCart = cartRepository.save(cart);
+        redisService.storeCartInRedis(savedCart);
 
-//        redisService.storeCartInRedis(cartRepository);
     }
 
     @Override
     public CartItem getCartItem(Long cartId, Long productId) {
-        Cart cart = cartService.getCart(cartId);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(()-> new ResourceNotFoundException("Product Not Found"));
         return cart.getCartItems().stream() // Stream of cart items
                 .filter(item -> item.getItemId().equals(productId)) // Filter by product ID
                 .findFirst() // Find the first cart item with the matching product ID
