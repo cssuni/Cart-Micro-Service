@@ -5,10 +5,12 @@ import com.Cart.Micro.Repository.CartItemRepository;
 import com.Cart.Micro.Repository.CartRepository;
 import com.Cart.Micro.exception.ResourceNotFoundException;
 import com.Cart.Micro.model.Cart;
+import com.Cart.Micro.model.CartItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,12 +28,17 @@ public class CartService implements ICartService {
     public void clearCart(Long cartId) {
 
         Cart cart = cartRepository.findById(cartId).orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
-        cart.getCartItems().forEach(item ->{
+
+        Set<CartItem> cartItemSet = cart.getCartItems();
+
+        cartItemSet.forEach(item ->{
             cart.removeCartItem(item);
             cart.updateTotalAmount();
             cartItemRepository.delete(item);
 
         });
+        cartRepository.save(cart);
+
 
     }
 
