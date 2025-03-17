@@ -47,12 +47,12 @@ public class CartItemService implements ICartItemService {
             cartItem.setProductTitle(product.getName());
             cartItem.setItemId(product.getId());
             cartItem.setProductUrl(product.getUrl());
-            cartItem.setCart(cart);
 
         } else {
             cartItem.setQuantity(cartItem.getQuantity() + quantity);
 
         }
+        cartItem.setCart(cart);
         cartItem.setTotalPrice();
         cart.addCartItem(cartItem);
         cart.updateTotalAmount();
@@ -81,11 +81,17 @@ public class CartItemService implements ICartItemService {
         CartItem cartItem = getCartItem(cartId, productId);
 
         cartItem.setQuantity(quantity);
+        cart.addCartItem(cartItem);
         cartItem.setTotalPrice();
         cart.updateTotalAmount();
+        cartItem.setCart(cart);
+
+        System.out.println(cartItem);
+
 
         cartItemRepository.save(cartItem);
-        redisService.storeCartInRedis(cartRepository.save(cart));
+
+//        redisService.storeCartInRedis(cartRepository);
     }
 
     @Override
