@@ -9,6 +9,7 @@ import com.Cart.Micro.model.Cart;
 import com.Cart.Micro.model.CartItem;
 import com.Cart.Micro.model.ProductDTOforCart;
 import com.Cart.Micro.response.ApiResponse;
+import com.Cart.Micro.service.redis.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ public class CartItemService implements ICartItemService {
 //    private final ProductService productService;
     private final CartService cartService;
     private final ProductInterface productInterface;
+    private final RedisService redisService;
 
 
     @Override
@@ -28,10 +30,14 @@ public class CartItemService implements ICartItemService {
 
         Cart cart = cartService.getCart(cartId);
 
+        System.out.println(cart);
+
         CartItem cartItem = cart.getCartItems().stream() // Stream of cart items
                 .filter(item -> item.getItemId().equals(productId)) // Filter by product ID
                 .findFirst() // Find the first cart item with the matching product ID
                 .orElse(new CartItem()); // If not found, create a new cart item
+
+        System.out.println(cartItem);
 
         if(cartItem.getId() == null) {
             ProductDTOforCart product = productInterface.getProductDetails(productId);
@@ -42,7 +48,6 @@ public class CartItemService implements ICartItemService {
             cartItem.setItemId(product.getId());
             cartItem.setProductUrl(product.getUrl());
             cartItem.setCart(cart);
-            cartItemRepository.save(cartItem);
 
         } else {
             cartItem.setQuantity(cartItem.getQuantity() + quantity);
@@ -51,8 +56,8 @@ public class CartItemService implements ICartItemService {
         cartItem.setTotalPrice();
         cart.addCartItem(cartItem);
         cart.updateTotalAmount();
-        cartItemRepository.save(cartItem);
-        cartRepository.save(cart);
+        System.out.println(cart);
+        redisService.storeCartInRedis(cartRepository.save(cart));
     }
 
     @Override
@@ -65,7 +70,7 @@ public class CartItemService implements ICartItemService {
         cart.updateTotalAmount();
 
         cartItemRepository.delete(cartItem);
-        cartRepository.save(cart);
+        redisService.storeCartInRedis(cartRepository.save(cart));
 
     }
 
@@ -80,7 +85,7 @@ public class CartItemService implements ICartItemService {
         cart.updateTotalAmount();
 
         cartItemRepository.save(cartItem);
-        cartRepository.save(cart);
+        redisService.storeCartInRedis(cartRepository.save(cart));
     }
 
     @Override
