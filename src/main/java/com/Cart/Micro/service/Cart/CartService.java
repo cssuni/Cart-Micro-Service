@@ -6,9 +6,7 @@ import com.Cart.Micro.Repository.CartRepository;
 import com.Cart.Micro.exception.ResourceNotFoundException;
 import com.Cart.Micro.model.Cart;
 import com.Cart.Micro.model.CartItem;
-import com.Cart.Micro.service.redis.RedisService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -20,37 +18,34 @@ public class CartService implements ICartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final RedisService redisService;
-    private final CartItemService cartItemService;
 
     @Override
     public Cart getCart(Long cartId) {
-
-        Cart cart = redisService.findCartInRedis(cartId);
-        if(cart == null)
-            return cartRepository.findById(cartId).stream().map(redisService::storeCartInRedis)
-                    .findFirst().orElseThrow(()-> new ResourceNotFoundException("Cart Not Found"));
-
-
-        return cart;
-
-
-
+        return cartRepository.findById(cartId).orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
     }
 
     @Override
     public void clearCart(Long cartId) {
 
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(()-> new ResourceNotFoundException("Product Not Found"));
+        Cart cart = cartRepository.findById(cartId).orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         Set<CartItem> cartItemSet = cart.getCartItems();
-        cartItemSet.forEach(item->cartItemService.removeItemFromCart(cartId,item.getItemId()));
+
+        cartItemSet.forEach(item ->{
+            cart.removeCartItem(item);
+            cart.updateTotalAmount();
+            cartItemRepository.delete(item);
+
+        });
+        cartRepository.save(cart);
+
+
     }
 
     @Override
     public BigDecimal getTotalAmount(Long cartId) {
-        Cart cart = getCart(cartId);
+        Cart cart = cartRepository.findById(cartId).orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
+
         return cart.getTotalAmount();
     }
 //
